@@ -108,6 +108,7 @@ const AddTodo = () => {
             }}
           >
             <input
+              id="add-todo"
               ref={node => {
                 input = node;
               }}
