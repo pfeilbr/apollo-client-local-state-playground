@@ -122,7 +122,7 @@ const AddTodo = () => {
 
 const Todo = ({ todo, toggleTodo }) => {
   return (
-    <li key={todo.id}>
+    <li>
       <input
         type="checkbox"
         checked={todo.completed}
