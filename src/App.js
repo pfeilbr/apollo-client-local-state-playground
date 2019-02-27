@@ -1,9 +1,8 @@
 import React, { Component } from "react";
-import logo from "./logo.svg";
 import { ApolloClient } from "apollo-client";
 import { InMemoryCache } from "apollo-cache-inmemory";
 import gql from "graphql-tag";
-import { ApolloProvider, ApolloConsumer, Query, Mutation } from "react-apollo";
+import { ApolloProvider, Query, Mutation } from "react-apollo";
 
 const data = {
   todos: [
@@ -41,6 +40,16 @@ const ADD_TODO = gql`
   }
 `;
 
+const TOGGLE_TODO = gql`
+  mutation ToggleTodo($id: Number!) {
+    toggleTodo(id: $id) @client {
+      id
+      text
+      completed
+    }
+  }
+`;
+
 const cache = new InMemoryCache();
 const client = new ApolloClient({
   cache,
@@ -63,6 +72,18 @@ const client = new ApolloClient({
         // you can also do cache.writeData({ data }) here if you prefer
         cache.writeQuery({ query, data });
         return newTodo;
+      },
+      toggleTodo: (_root, variables, { cache, getCacheKey }) => {
+        const id = getCacheKey({ __typename: "todo", id: variables.id });
+        const fragment = gql`
+          fragment completeTodo on todo {
+            completed
+          }
+        `;
+        const todo = cache.readFragment({ fragment, id });
+        const data = { ...todo, completed: !todo.completed };
+        cache.writeData({ id, data });
+        return null;
       }
     }
   }
@@ -99,13 +120,42 @@ const AddTodo = () => {
   );
 };
 
+const Todo = ({ todo, toggleTodo }) => {
+  return (
+    <li key={todo.id}>
+      <input
+        type="checkbox"
+        checked={todo.completed}
+        onChange={() => {
+          toggleTodo({ variables: { id: todo.id } });
+        }}
+      />
+      <span
+        style={{ textDecoration: todo.completed ? "line-through" : "none" }}
+      >
+        {todo.text}
+      </span>
+    </li>
+  );
+};
+
+const TodoContainer = props => {
+  return (
+    <Mutation mutation={TOGGLE_TODO}>
+      {(toggleTodo, { data }) => {
+        return <Todo {...props} toggleTodo={toggleTodo} />;
+      }}
+    </Mutation>
+  );
+};
+
 const TodoList = props => {
   return (
     <>
       <AddTodo />
-      <ul>
+      <ul style={{ listStyleType: "none" }}>
         {props.todos.map(todo => (
-          <li key={todo.id}>{todo.text}</li>
+          <TodoContainer key={todo.id} todo={todo} />
         ))}
       </ul>
     </>
